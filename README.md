@@ -206,15 +206,18 @@ python src\test_agent1_agent2_connection.py
 ```
 
 ### 6-2. 전체 파이프라인 데모 실행
+‼️ 현재 agent 1->2만 연결되어있어서 데모 실행시 아래의 `python src/test_agent1_agent2_connection.py`로 1과 2의 연결 확인해보는게 확실하긴 합니당.
 
 macOS / Linux
 ```
 python main.py
+python src/test_agent1_agent2_connection.py
 ```
 
 Windows
 ```
 python main.py
+python src/test_agent1_agent2_connection.py
 ```
 
 ## 7. 자주 나는 에러
