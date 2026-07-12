@@ -1,0 +1,8 @@
+torch
+numpy
+anthropic
+python-dotenv
+langgraph
+chromadb
+google-genai
+ollama
