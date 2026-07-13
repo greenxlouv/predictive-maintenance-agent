@@ -24,7 +24,11 @@ else:
 
 print(f"device: {device}")
 
-weight_path="/Users/bluecloud/workspace_vscode/vscode_research/agent1_pth/best_lstm_2d.pth"
+#weight_path="/Users/bluecloud/workspace_vscode/vscode_research/agent1_pth/best_lstm_2d.pth"
+import os
+_DEFAULT_WEIGHT_PATH = os.path.join(
+os.path.dirname(os.path.abspath(__file__)), "..", "weights", "best_lstm_2d.pth"
+)
 
 
 # 1. 모델 정의 (기존 2-D 세팅 그대로) ──────────────────
@@ -45,7 +49,7 @@ class LSTMPredictor(nn.Module):
 
 
 # 2. 모델 로드
-def load_model(weight_path=weight_path,input_size=61,):
+def load_model(weight_path=_DEFAULT_WEIGHT_PATH,input_size=61,):
     model = LSTMPredictor(input_size=input_size).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     return model
@@ -65,14 +69,14 @@ def predict_with_uncertainty(model, x, n_iter=100):
             preds.append(model(x_t).cpu().numpy())
     preds = np.stack(preds)  # (n_iter, 1)
 
-    rul_pred = float(np.clip(preds.mean(), 0.0, None))
-    ci_lower = float(np.clip(np.percentile(preds, 5), 0.0, None))
-    ci_upper = float(np.clip(np.percentile(preds, 95), 0.0, None))
+    rul_pred = np.clip(preds.mean(axis=0), 0.0, None)
+    ci_lower = np.clip(np.percentile(preds, 5, axis=0), 0.0, None)
+    ci_upper = np.clip(np.percentile(preds, 95, axis=0), 0.0, None)
 
     return {
-        "rul_pred": rul_pred,
-        "rul_ci_lower": ci_lower,
-        "rul_ci_upper": ci_upper,
+        "rul_pred": float(rul_pred[0]) if rul_pred.shape[0] == 1 else rul_pred,
+        "rul_ci_lower": float(ci_lower[0]) if ci_lower.shape[0] == 1 else ci_lower,
+        "rul_ci_upper": float(ci_upper[0]) if ci_upper.shape[0] == 1 else ci_upper,
     }
 
 
