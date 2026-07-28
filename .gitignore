@@ -4,3 +4,9 @@ __pycache__/
 weights/*.pth
 preprocessed/*.npy
 .ipynb_checkpoints/
+**/.DS_Store
+.venv/
+agent1_stream_log.csv
+chroma_db/
+reports/
+**/.DS_Store

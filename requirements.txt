@@ -1,8 +1,30 @@
-torch
-numpy
-anthropic
-python-dotenv
-langgraph
-chromadb
-google-genai
-ollama
+# predictive-maintenance-agent 의존성
+# Python 3.12 (conda base) 기준. 
+# 설치: pip install -r requirements.txt --break-system-packages
+
+# Agent 1: 모델 추론 
+torch>=2.2
+numpy>=1.26
+
+# LangGraph 파이프라인 
+langgraph>=0.2
+
+# Agent 3: RAG (ChromaDB + 로컬 임베딩)
+langchain-core>=0.3
+langchain-huggingface>=0.1
+langchain-chroma>=0.1
+sentence-transformers>=3.0     # jhgan/ko-sroberta-multitask 로딩용
+
+# Agent 2/3/4 공용: LLM 스위칭 (llm_client.py)
+python-dotenv>=1.0
+anthropic>=0.40                # LLM_PROVIDER=anthropic
+google-generativeai>=0.8       # LLM_PROVIDER=gemini
+requests>=2.31                 # LLM_PROVIDER=ollama (ollama serve REST 호출)
+
+# Agent 4: 리포트 PDF 저장
+reportlab>=4.0
+
+# 대시보드 (streamlit_dashboard.py) 
+streamlit>=1.38
+pandas>=2.2                    # agent1_stream_log.csv 폴링/가공용
+plotly>=5.20                   

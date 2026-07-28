@@ -1,14 +1,12 @@
-import os
-from dotenv import load_dotenv
+from llm_client import call_llm_text
 
-load_dotenv()
+
 # ── 0. Agent 1 모델 성능 참고값 (2-D 최종 채택 모델, Test=C6 기준) ──
 # LLM 프롬프트에 투명하게 공개해서 판단 근거 설명이 과신하지 않도록 함
 MODEL_TEST_RMSE = 31.10
 MODEL_TEST_MAE = 28.38
 DOMAIN_GAP_NOTE = "C6은 학습 데이터(C1, C4)와 마모 패턴이 다른 cutter로, 예측 오차가 클 수 있음"
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "gemini") 
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+
 
 # ── 1. 임계값 (y_test.npy 실측 percentile 기반, 감으로 잡은 값 아님) ──
 # 계산 근거: y_test(C6, n=286)에서 RUL=0(이미 EOL 지난 컷, 88개=30.8%)을
@@ -44,20 +42,14 @@ def is_near_boundary(state: dict) -> bool:
     )
 
 
-# ── 2. LLM 클라이언트 (provider별로 지연 초기화)──────────────────────────────
-def _get_client():
-    if LLM_PROVIDER == "anthropic":
-        from anthropic import Anthropic
-        return Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    elif LLM_PROVIDER == "gemini":
-        from google import genai
-        return genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    elif LLM_PROVIDER == "ollama":
-        import ollama
-        return ollama  # 로컬 서버라 별도 client 객체 없이 모듈 자체 사용
-    else:
-        raise ValueError(f"알 수 없는 LLM_PROVIDER: {LLM_PROVIDER}")
-client = _get_client()
+# ── 2. LLM 판단 프롬프트 ──────────────────────────────
+# 기존에는 여기서 Anthropic 클라이언트를 직접 만들어 호출했지만,
+# 이제 agent3_planner.py / agent4_reporter.py와 동일하게 llm_client.py의
+# call_llm_text()를 통해서만 호출한다. .env의 LLM_PROVIDER(anthropic/
+# gemini/ollama)에 따라 실제로 어디로 갈지는 llm_client.py가 알아서 처리함.
+
+SYSTEM_PROMPT = "당신은 CNC 밀링 공구의 예지보전을 담당하는 판단 Agent입니다."
+
 
 def build_prompt(state: dict, action: str, near_boundary: bool) -> str:
     boundary_note = (
@@ -65,9 +57,7 @@ def build_prompt(state: dict, action: str, near_boundary: bool) -> str:
         if near_boundary
         else ""
     )
-    return f"""당신은 CNC 밀링 공구의 예지보전을 담당하는 판단 Agent입니다.
-
-[예측 정보]
+    return f"""[예측 정보]
 - 예측 RUL: {state['rul_pred']:.2f} 사이클
 - 95% 신뢰구간: [{state['rul_ci_lower']:.2f}, {state['rul_ci_upper']:.2f}]
 - 임계값 기반 1차 판정: {action}{boundary_note}
@@ -84,29 +74,8 @@ def build_prompt(state: dict, action: str, near_boundary: bool) -> str:
 
 
 def get_llm_explanation(state: dict, action: str, near_boundary: bool) -> str:
-    prompt = build_prompt(state, action, near_boundary)
-
-    if LLM_PROVIDER == "anthropic":
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=300,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return message.content[0].text
-
-    elif LLM_PROVIDER == "gemini":
-        response = client.models.generate_content(
-            model="gemini-3.5-flash",
-            contents=prompt,
-        )
-        return response.text
-
-    elif LLM_PROVIDER == "ollama":
-        response = client.chat(
-            model=OLLAMA_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return response["message"]["content"]
+    user_prompt = build_prompt(state, action, near_boundary)
+    return call_llm_text(SYSTEM_PROMPT, user_prompt, max_tokens=300)
 
 
 # ── 3. Agent 1 → Agent 2 연결 지점 ────────────────────
