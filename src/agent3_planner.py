@@ -16,7 +16,7 @@ LLM_PROVIDER(anthropic/gemini/ollama) 스위칭을 그대로 따른다.
 
 
 입력으로 기대하는 state 필드
-----------------------------
+{
 Agent 1:
     rul_pred, rul_ci_lower, rul_ci_upper : float
 
@@ -26,12 +26,14 @@ Agent 2:
     explanation      : str
 
 선택 필드:
-    cutter_id : str   예) "c6". 없으면 "미상"으로 대체.
+    cutter_id : str   예) "c6". 없으면 "미상"으로 대체
+}
 
 출력으로 채워 넣는 state 필드
-----------------------------
-    maintenance_plan             : dict | None
+{
+    maintenance_plan : dict | None
     maintenance_plan_raw_context : str
+}
 """
 
 from __future__ import annotations
@@ -347,57 +349,3 @@ if __name__ == "__main__":
         # print(result)
 
 
-# ---------------------------------------------------------------------------
-# 참고: graph.py / data_source.py에 필요한 수정 (그래프 라우팅 담당자 전달용)
-# ---------------------------------------------------------------------------
-#
-# graph.py의 PipelineState에 추가:
-#
-#     class PipelineState(TypedDict):
-#         x_input: np.ndarray
-#         cutter_id: str                              # 추가
-#         rul_pred: float
-#         rul_ci_lower: float
-#         rul_ci_upper: float
-#         action: str
-#         is_near_boundary: bool
-#         explanation: str
-#         maintenance_plan: dict | None                # 추가
-#         maintenance_plan_raw_context: str             # 추가
-#         report_text: str                              # 추가 (agent4_reporter.py 참고)
-#         report_paths: dict                            # 추가
-#
-# graph.py에 노드/조건부 엣지 추가 예시:
-#
-#     from agent3_planner import generate_maintenance_plan, should_invoke_agent3
-#     from agent4_reporter import generate_report
-#
-#     def agent3_node(state: PipelineState) -> dict:
-#         return generate_maintenance_plan(state)
-#
-#     def agent4_node(state: PipelineState) -> dict:
-#         return generate_report(state)
-#
-#     def route_after_agent2(state: PipelineState) -> str:
-#         return "agent3" if should_invoke_agent3(state) else "agent4"
-#
-#     graph.add_node("agent3", agent3_node)
-#     graph.add_node("agent4", agent4_node)
-#     graph.add_conditional_edges("agent2", route_after_agent2, {
-#         "agent3": "agent3",
-#         "agent4": "agent4",
-#     })
-#     graph.add_edge("agent3", "agent4")
-#     graph.add_edge("agent4", END)
-#
-# data_source.py에 cutter_id 로딩 추가 예시:
-#
-#     def load_c6_windows():
-#         X_test = np.load(DATA_DIR / "X_test.npy")
-#         y_test = np.load(DATA_DIR / "y_test.npy")
-#         cutter_test = np.load(DATA_DIR / "cutter_test.npy")   # 추가
-#         return X_test, y_test, cutter_test
-#
-#     def demo_single_window(index=0):
-#         X_test, y_test, cutter_test = load_c6_windows()
-#         return X_test[index], y_test[index], cutter_test[index]
