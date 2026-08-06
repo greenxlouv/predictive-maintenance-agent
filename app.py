@@ -32,7 +32,38 @@ from llm_client import call_llm_text
 from agent3_planner import generate_maintenance_plan, should_invoke_agent3
 from agent4_reporter import generate_report
 
-plt.rcParams["font.family"] = "Malgun Gothic"
+import matplotlib
+from matplotlib import font_manager
+
+# 한글 폰트 — Windows(Malgun Gothic)만 하드코딩되어 있으면 macOS/Linux에서
+# 한글이 네모(tofu)로 깨짐. AGENT4_FONT_PATH(reportlab용)와 별개로, matplotlib은
+# 폰트 "이름"을 등록해야 해서 후보 경로들을 순서대로 시도해 등록한다.
+_KOREAN_FONT_CANDIDATES = [
+    "Malgun Gothic",                                          # Windows
+    "/System/Library/Fonts/Supplemental/AppleGothic.ttf",     # macOS
+    "/System/Library/Fonts/AppleSDGothicNeo.ttc",              # macOS (최신)
+    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",         # Linux
+]
+
+_font_set = False
+for _candidate in _KOREAN_FONT_CANDIDATES:
+    try:
+        if Path(_candidate).exists():
+            font_manager.fontManager.addfont(_candidate)
+            plt.rcParams["font.family"] = font_manager.FontProperties(fname=_candidate).get_name()
+        else:
+            # "Malgun Gothic"처럼 경로가 아니라 폰트 이름 자체인 경우 —
+            # 시스템에 설치돼 있으면 이 이름으로 바로 잡힘 (Windows에서만 해당)
+            plt.rcParams["font.family"] = _candidate
+        _font_set = True
+        break
+    except Exception:
+        continue
+
+if not _font_set:
+    print("[경고] 한글 폰트를 찾지 못해 그래프의 한글이 깨질 수 있습니다. "
+          "AGENT4_FONT_PATH처럼 로컬 폰트 경로를 _KOREAN_FONT_CANDIDATES에 추가하세요.")
+
 plt.rcParams["axes.unicode_minus"] = False
 
 st.set_page_config(page_title="PHM 예지보전 시스템", page_icon="🛠️", layout="wide")
