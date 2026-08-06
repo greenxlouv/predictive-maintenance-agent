@@ -49,15 +49,25 @@ _KOREAN_FONT_CANDIDATES = [
 KOREAN_FONT_PROP = None
 for _candidate in _KOREAN_FONT_CANDIDATES:
     try:
-        if Path(_candidate).exists():
+        if "/" in _candidate:
+            # 경로 후보 — 파일이 실제로 있을 때만 등록
+            if not Path(_candidate).exists():
+                continue
             font_manager.fontManager.addfont(_candidate)
-            KOREAN_FONT_PROP = font_manager.FontProperties(fname=_candidate)
-            plt.rcParams["font.family"] = KOREAN_FONT_PROP.get_name()
+            prop = font_manager.FontProperties(fname=_candidate)
         else:
-            # "Malgun Gothic"처럼 경로가 아니라 시스템에 설치된 폰트 이름인 경우
-            # (Windows에서만 해당) — 존재 여부를 미리 확인할 수 없어 바로 시도
-            KOREAN_FONT_PROP = font_manager.FontProperties(family=_candidate)
-            plt.rcParams["font.family"] = _candidate
+            # 이름 매칭 후보("Malgun Gothic" 등, Windows 전용) — 시스템에 실제로
+            # 설치돼 있는 폰트 목록에 있을 때만 채택 (없으면 다음 후보로 넘어감).
+            # 이전 버전은 이 확인 없이 바로 채택해버려서, 맥에서도 "Malgun Gothic"으로
+            # 계속 시도하다 렌더링 시점에 조용히 기본 폰트로 폴백되는 버그가 있었음.
+            available_names = {f.name for f in font_manager.fontManager.ttflist}
+            if _candidate not in available_names:
+                continue
+            prop = font_manager.FontProperties(family=_candidate)
+
+        KOREAN_FONT_PROP = prop
+        plt.rcParams["font.family"] = prop.get_name()
+        print(f"[정보] 한글 폰트로 '{prop.get_name()}' 사용")
         break
     except Exception:
         continue
