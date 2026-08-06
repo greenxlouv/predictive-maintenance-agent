@@ -36,31 +36,33 @@ import matplotlib
 from matplotlib import font_manager
 
 # 한글 폰트 — Windows(Malgun Gothic)만 하드코딩되어 있으면 macOS/Linux에서
-# 한글이 네모(tofu)로 깨짐. AGENT4_FONT_PATH(reportlab용)와 별개로, matplotlib은
-# 폰트 "이름"을 등록해야 해서 후보 경로들을 순서대로 시도해 등록한다.
+# 한글이 네모(tofu)로 깨짐. rcParams만 설정하면 legend() 등 일부 요소에
+# 안정적으로 안 먹는 경우가 있어서, FontProperties 객체를 만들어 텍스트를
+# 그리는 자리마다(legend/label/title/text) 명시적으로 넘기는 방식으로 강화함.
 _KOREAN_FONT_CANDIDATES = [
-    "Malgun Gothic",                                          # Windows
+    "Malgun Gothic",                                          # Windows (이름 매칭)
     "/System/Library/Fonts/Supplemental/AppleGothic.ttf",     # macOS
     "/System/Library/Fonts/AppleSDGothicNeo.ttc",              # macOS (최신)
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",         # Linux
 ]
 
-_font_set = False
+KOREAN_FONT_PROP = None
 for _candidate in _KOREAN_FONT_CANDIDATES:
     try:
         if Path(_candidate).exists():
             font_manager.fontManager.addfont(_candidate)
-            plt.rcParams["font.family"] = font_manager.FontProperties(fname=_candidate).get_name()
+            KOREAN_FONT_PROP = font_manager.FontProperties(fname=_candidate)
+            plt.rcParams["font.family"] = KOREAN_FONT_PROP.get_name()
         else:
-            # "Malgun Gothic"처럼 경로가 아니라 폰트 이름 자체인 경우 —
-            # 시스템에 설치돼 있으면 이 이름으로 바로 잡힘 (Windows에서만 해당)
+            # "Malgun Gothic"처럼 경로가 아니라 시스템에 설치된 폰트 이름인 경우
+            # (Windows에서만 해당) — 존재 여부를 미리 확인할 수 없어 바로 시도
+            KOREAN_FONT_PROP = font_manager.FontProperties(family=_candidate)
             plt.rcParams["font.family"] = _candidate
-        _font_set = True
         break
     except Exception:
         continue
 
-if not _font_set:
+if KOREAN_FONT_PROP is None:
     print("[경고] 한글 폰트를 찾지 못해 그래프의 한글이 깨질 수 있습니다. "
           "AGENT4_FONT_PATH처럼 로컬 폰트 경로를 _KOREAN_FONT_CANDIDATES에 추가하세요.")
 
@@ -150,7 +152,8 @@ def draw_gauge(value, red_th, yellow_th, max_val=150):
     ax.set_xlim(0, 1)
     ax.set_ylim(-0.05, 0.5)
     ax.axis("off")
-    ax.text(0.5, -0.05, f"RUL = {value:.1f}", ha="center", fontsize=12, fontweight="bold")
+    ax.text(0.5, -0.05, f"RUL = {value:.1f}", ha="center", fontsize=12, fontweight="bold",
+            fontproperties=KOREAN_FONT_PROP)
     return fig
 
 
@@ -194,9 +197,9 @@ def draw_agent1_frame(partial, cutter_df_full, n_total, ph_metrics, ph_graph1, s
     ax1.axhline(YELLOW_THRESHOLD, color="#B7791F", linestyle=":", linewidth=1, label=f"주의 임계값 ({YELLOW_THRESHOLD})")
     ax1.set_xlim(0, n_total)
     ax1.set_ylim(0, max(cutter_df_full["rul_pred"].max(), 1) * 1.2)
-    ax1.set_xlabel("cutter_step")
-    ax1.set_ylabel("RUL")
-    ax1.legend(loc="upper right", fontsize=8, frameon=False)
+    ax1.set_xlabel("cutter_step", fontproperties=KOREAN_FONT_PROP)
+    ax1.set_ylabel("RUL", fontproperties=KOREAN_FONT_PROP)
+    ax1.legend(loc="upper right", fontsize=8, frameon=False, prop=KOREAN_FONT_PROP)
     ax1.spines[["top", "right"]].set_visible(False)
     ph_graph1.pyplot(fig1)
     plt.close(fig1)
@@ -248,9 +251,9 @@ def draw_frame_graphs_validation(partial, cutter_df_full, n_total, ph_metrics, p
     ax1.axhline(YELLOW_THRESHOLD, color="#B7791F", linestyle=":", linewidth=1)
     ax1.set_xlim(0, n_total)
     ax1.set_ylim(0, max(cutter_df_full["rul_true"].max(), 1) * 1.1)
-    ax1.set_xlabel("cutter_step")
-    ax1.set_ylabel("RUL")
-    ax1.legend(loc="upper right", fontsize=8, frameon=False)
+    ax1.set_xlabel("cutter_step", fontproperties=KOREAN_FONT_PROP)
+    ax1.set_ylabel("RUL", fontproperties=KOREAN_FONT_PROP)
+    ax1.legend(loc="upper right", fontsize=8, frameon=False, prop=KOREAN_FONT_PROP)
     ax1.spines[["top", "right"]].set_visible(False)
     ph_graph1.pyplot(fig1)
     plt.close(fig1)
@@ -261,10 +264,10 @@ def draw_frame_graphs_validation(partial, cutter_df_full, n_total, ph_metrics, p
     ax4.plot(lims, lims, "--", color="gray", linewidth=1, label="완벽한 예측 (y=x)")
     ax4.set_xlim(lims)
     ax4.set_ylim(lims)
-    ax4.set_xlabel("실제 RUL")
-    ax4.set_ylabel("예측 RUL")
-    ax4.set_title("예측 보정도", fontsize=10)
-    ax4.legend(fontsize=8, frameon=False)
+    ax4.set_xlabel("실제 RUL", fontproperties=KOREAN_FONT_PROP)
+    ax4.set_ylabel("예측 RUL", fontproperties=KOREAN_FONT_PROP)
+    ax4.set_title("예측 보정도", fontsize=10, fontproperties=KOREAN_FONT_PROP)
+    ax4.legend(fontsize=8, frameon=False, prop=KOREAN_FONT_PROP)
     ph_cal.pyplot(fig4)
     plt.close(fig4)
 
@@ -272,9 +275,9 @@ def draw_frame_graphs_validation(partial, cutter_df_full, n_total, ph_metrics, p
     fig5, ax5 = plt.subplots(figsize=(4.3, 4))
     ax5.hist(residual, bins=15, color="#2563EB", alpha=0.8)
     ax5.axvline(residual.mean(), color="black", linestyle="--", linewidth=1)
-    ax5.set_xlabel(f"예측 - 실제 (평균 오차: {residual.mean():.2f})")
-    ax5.set_ylabel("빈도")
-    ax5.set_title("잔차 분포", fontsize=10)
+    ax5.set_xlabel(f"예측 - 실제 (평균 오차: {residual.mean():.2f})", fontproperties=KOREAN_FONT_PROP)
+    ax5.set_ylabel("빈도", fontproperties=KOREAN_FONT_PROP)
+    ax5.set_title("잔차 분포", fontsize=10, fontproperties=KOREAN_FONT_PROP)
     ph_res.pyplot(fig5)
     plt.close(fig5)
 
